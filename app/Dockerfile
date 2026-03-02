@@ -13,7 +13,7 @@ RUN npm ci --only=production && \
 
 
 # ─── Stage 2: Builder / Test ──────────────────────────────────────────────────
-FROM node:20-alpine3.21 AS builder
+FROM node:25-alpine3.22 AS builder
 
 WORKDIR /app
 
