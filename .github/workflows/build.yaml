@@ -148,10 +148,13 @@ jobs:
         with:
           context: ./app
           file: ./app/Dockerfile
-          # Load into the local Docker daemon so Trivy can scan it
+          # Load into the local Docker daemon so Trivy can scan it.
+          # Use a plain local tag — IMAGE_NAME expands to '/twin-app' (no
+          # username prefix) when DOCKER_USERNAME is not available in this
+          # job (no Docker login), making it an invalid reference.
           load: true
           push: false
-          tags: ${{ env.IMAGE_NAME }}:ci-scan
+          tags: devops-takehome:ci-scan
           # Use GitHub Actions layer cache to speed up repeated builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -160,7 +163,7 @@ jobs:
         id: trivy
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: ${{ env.IMAGE_NAME }}:ci-scan
+          image-ref: devops-takehome:ci-scan
           format: "sarif"
           output: "trivy-results.sarif"
           # Fail the build on CRITICAL or HIGH findings
@@ -172,15 +175,16 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF to GitHub Code Scanning
-        # Upload even if the scan step failed so the report is always available
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        # Only upload when Trivy actually produced the file — guards against
+        # the build step failing before Trivy runs (no file = action errors).
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
           category: trivy-container
 
       - name: Upload Trivy SARIF as artifact (fallback / offline review)
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         uses: actions/upload-artifact@v4
         with:
           name: trivy-sarif-${{ github.run_number }}
