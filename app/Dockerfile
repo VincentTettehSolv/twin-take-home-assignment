@@ -1,5 +1,5 @@
 # ─── Stage 1: Dependencies ────────────────────────────────────────────────────
-FROM node:20-alpine3.21 AS deps
+FROM node:25-alpine3.22 AS deps
 
 WORKDIR /app
 
@@ -34,7 +34,7 @@ RUN npm test
 
 
 # ─── Stage 3: Production Image ────────────────────────────────────────────────
-FROM node:20-alpine3.21 AS production
+FROM node:25-alpine3.22 AS production
 
 # Security: upgrade all OS packages to latest patched versions.
 # This clears CVEs in the base image that the pinned tag may not yet include.
