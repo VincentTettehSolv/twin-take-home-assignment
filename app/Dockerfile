@@ -1,5 +1,5 @@
 # ─── Stage 1: Dependencies ────────────────────────────────────────────────────
-FROM node:20-alpine AS deps
+FROM node:20-alpine3.21 AS deps
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN npm ci --only=production && \
 
 
 # ─── Stage 2: Builder / Test ──────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-alpine3.21 AS builder
 
 WORKDIR /app
 
@@ -34,7 +34,12 @@ RUN npm test
 
 
 # ─── Stage 3: Production Image ────────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-alpine3.21 AS production
+
+# Security: upgrade all OS packages to latest patched versions.
+# This clears CVEs in the base image that the pinned tag may not yet include.
+# Run as first layer so it is cached separately from app changes.
+RUN apk upgrade --no-cache
 
 # Security: add a non-root user
 RUN addgroup -g 1001 -S appgroup && \
