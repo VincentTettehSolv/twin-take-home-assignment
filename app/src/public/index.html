@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevOps Takehome — Status Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #21253a;
+      --border: #2e3348;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --success: #22c55e;
+      --warn: #f59e0b;
+      --error: #ef4444;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --font: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent2);
+      letter-spacing: -0.5px;
+    }
+
+    .header-left p {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border: 1px solid;
+    }
+
+    .status-badge.ok {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--success);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .status-badge.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover { border-color: var(--accent); }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .card-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-body { padding: 20px; }
+
+    .kv-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kv-row:last-child { border-bottom: none; }
+
+    .kv-key { color: var(--text-muted); font-size: 12px; }
+
+    .kv-val {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .env-tag {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .env-local    { background: rgba(99, 102, 241, 0.15); color: var(--accent2); }
+    .env-staging  { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+    .env-production { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+
+    .timestamp {
+      font-size: 13px;
+      color: var(--accent2);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .refresh-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 3px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.5s ease;
+    }
+
+    .footer {
+      margin-top: 32px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .loading { opacity: 0.4; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>⬡ DevOps Takehome</h1>
+    <p>Platform Engineering · Status Dashboard</p>
+  </div>
+  <div id="healthBadge" class="status-badge ok">
+    <span class="status-dot"></span>
+    <span id="healthText">Healthy</span>
+  </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="grid">
+  <div class="card">
+    <div class="card-label">Application</div>
+    <div class="card-value" id="appName">devops-takehome</div>
+    <div class="card-sub">Service Name</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Version</div>
+    <div class="card-value" id="version" class="loading">—</div>
+    <div class="card-sub">Deployed Version</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Environment</div>
+    <div class="card-value" id="envBadge">—</div>
+    <div class="card-sub">Runtime Environment</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Uptime</div>
+    <div class="card-value" id="uptime">—</div>
+    <div class="card-sub">Process Uptime</div>
+  </div>
+  <div class="card">
+    <div class="card-label">PostgreSQL</div>
+    <div class="card-value" id="pgStatus">—</div>
+    <div class="card-sub">Database Status</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Redis</div>
+    <div class="card-value" id="redisStatus">—</div>
+    <div class="card-sub">Cache Status</div>
+  </div>
+</div>
+
+<!-- Server Info -->
+<div class="section">
+  <div class="section-header">
+    Server Information
+    <button class="refresh-btn" onclick="loadInfo()">↻ Refresh</button>
+  </div>
+  <div class="section-body">
+    <div class="kv-row">
+      <span class="kv-key">Hostname</span>
+      <span class="kv-val" id="hostname">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">Node.js Version</span>
+      <span class="kv-val" id="nodeVersion">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">Heap Used</span>
+      <span class="kv-val" id="heapUsed">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">Heap Total</span>
+      <span class="kv-val" id="heapTotal">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">RSS Memory</span>
+      <span class="kv-val" id="rss">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- Timestamps -->
+<div class="section">
+  <div class="section-header">Live Clock</div>
+  <div class="section-body">
+    <div class="kv-row">
+      <span class="kv-key">Server Timestamp</span>
+      <span class="timestamp" id="serverTs">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">Local Browser Time</span>
+      <span class="timestamp" id="localTs">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- Health Endpoints -->
+<div class="section">
+  <div class="section-header">Endpoint Health</div>
+  <div class="section-body">
+    <div class="kv-row">
+      <span class="kv-key">GET /health</span>
+      <span class="kv-val" id="h1">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">GET /health/ready</span>
+      <span class="kv-val" id="h2">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">GET /api/info</span>
+      <span class="kv-val" id="h3">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">GET /metrics</span>
+      <span class="kv-val" id="h4">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">GET /api/db/hits</span>
+      <span class="kv-val" id="h5">—</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">POST /api/cache/:key</span>
+      <span class="kv-val" id="h6">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Auto-refreshes every 5 seconds · Built for TWIN Senior Platform Engineer Assignment
+</div>
+
+<script>
+  async function probe(url) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(3000) });
+      return r.ok ? `✓ ${r.status}` : `✗ ${r.status}`;
+    } catch {
+      return '✗ offline';
+    }
+  }
+
+  async function loadInfo() {
+    try {
+      const res = await fetch('/api/info');
+      const data = await res.json();
+
+      document.getElementById('version').textContent = `v${data.version}`;
+      document.getElementById('serverTs').textContent = data.timestamp;
+
+      const env = data.environment || 'local';
+      document.getElementById('envBadge').innerHTML =
+        `<span class="env-tag env-${env}">${env}</span>`;
+
+      document.getElementById('uptime').textContent =
+        `${Math.floor(data.uptime_seconds / 60)}m ${data.uptime_seconds % 60}s`;
+
+      document.getElementById('hostname').textContent = data.hostname;
+      document.getElementById('nodeVersion').textContent = data.node_version;
+      document.getElementById('heapUsed').textContent = `${data.memory.heap_used_mb} MB`;
+      document.getElementById('heapTotal').textContent = `${data.memory.heap_total_mb} MB`;
+      document.getElementById('rss').textContent = `${data.memory.rss_mb} MB`;
+
+      // DB status cards
+      const db = data.databases || {};
+      const pgEl = document.getElementById('pgStatus');
+      const rdEl = document.getElementById('redisStatus');
+      pgEl.textContent = db.postgres === 'ok' ? '✔ ok' : db.postgres === 'disabled' ? '⏸ disabled' : '✘ error';
+      pgEl.style.color = db.postgres === 'ok' ? 'var(--success)' : db.postgres === 'disabled' ? 'var(--warn)' : 'var(--error)';
+      rdEl.textContent = db.redis === 'ok' ? '✔ ok' : db.redis === 'disabled' ? '⏸ disabled' : '✘ error';
+      rdEl.style.color = db.redis === 'ok' ? 'var(--success)' : db.redis === 'disabled' ? 'var(--warn)' : 'var(--error)';
+    } catch (e) {
+      document.getElementById('healthBadge').className = 'status-badge error';
+      document.getElementById('healthText').textContent = 'Unreachable';
+    }
+  }
+
+  async function checkEndpoints() {
+    const [h1, h2, h3, h4, h5, h6] = await Promise.all([
+      probe('/health'),
+      probe('/health/ready'),
+      probe('/api/info'),
+      probe('/metrics'),
+      probe('/api/db/hits'),
+      probe('/api/cache/ping'),
+    ]);
+    document.getElementById('h1').textContent = h1;
+    document.getElementById('h2').textContent = h2;
+    document.getElementById('h3').textContent = h3;
+    document.getElementById('h4').textContent = h4;
+    document.getElementById('h5').textContent = h5;
+    document.getElementById('h6').textContent = h6;
+  }
+
+  function updateLocalClock() {
+    document.getElementById('localTs').textContent = new Date().toISOString();
+  }
+
+  // Initial load
+  loadInfo();
+  checkEndpoints();
+
+  // Auto-refresh
+  setInterval(loadInfo, 5000);
+  setInterval(checkEndpoints, 10000);
+  setInterval(updateLocalClock, 1000);
+  updateLocalClock();
+</script>
+</body>
+</html>

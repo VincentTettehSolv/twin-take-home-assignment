@@ -1,0 +1,37 @@
+# ─── terraform.tfvars ────────────────────────────────────────────────────────
+# Default variable values for local minikube deployment.
+# Copy this file and rename to terraform.tfvars before running terraform apply.
+#
+# IMPORTANT: Do not commit secrets or sensitive values to this file.
+# ──────────────────────────────────────────────────────────────────────────────
+
+image_name        = "vincentchrisbone/devops-takehome:latest"
+image_pull_policy = "Always"
+
+app_name    = "devops-takehome"
+namespace   = "devops-takehome"
+app_env     = "local"
+app_version = "1.0.0"
+app_port    = 3000
+
+replicas = 1
+
+resources = {
+  requests = { cpu = "50m", memory = "64Mi" }
+  limits   = { cpu = "250m", memory = "256Mi" }
+}
+
+service_type = "NodePort"
+node_port    = 30080
+
+log_level = "info"
+
+# ─── Redis ──────────────────────────────────────────────────────────────────
+# IMPORTANT: Use a strong password in production. Do NOT commit real passwords.
+redis_password = "redispass"
+
+# ─── PostgreSQL ──────────────────────────────────────────────────────────
+postgres_user     = "appuser"
+postgres_password = "pgpassword"
+postgres_db       = "appdb"
+postgres_pvc_size = "1Gi"

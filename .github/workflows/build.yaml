@@ -1,0 +1,273 @@
+# ─── .github/workflows/build.yaml ─────────────────────────────────────────────
+# Production CI/CD Pipeline
+#
+# Responsibilities:
+#   1. Lint      — ESLint static code analysis on every push/PR
+#   2. Test      — Jest unit tests with coverage reporting
+#   3. Scan      — Build Docker image locally, run Trivy vulnerability scan
+#                  (fails on CRITICAL or HIGH CVEs — image is never pushed if vulnerable)
+#   4. Push      — Re-build & push multi-platform image to Docker Hub
+#                  (only on push/merge to main, never on PRs)
+#
+# Triggers:
+#   - Pull requests targeting main  → jobs 1 & 2 & 3 (lint + test + scan, no push)
+#   - Pushes / merges to main       → full pipeline including Docker push
+#
+# Versioning / Tagging strategy:
+#   - sha-<short>   always applied (e.g. sha-a1b2c3d)
+#   - latest        always applied on main branch pushes
+#   - v<semver>     applied when a git tag like v1.2.3 is pushed
+#     → to release: git tag v1.0.0 && git push origin v1.0.0
+#
+# Required Repository Secrets:
+#   DOCKER_USERNAME  — Docker Hub username
+#   DOCKER_PASSWORD  — Docker Hub access token (Settings → Security → Access Tokens)
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Build, Test, Scan & Publish
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/build.yaml"
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+    paths:
+      - "app/**"
+      - ".github/workflows/build.yaml"
+
+# Cancel in-flight runs for the same branch/PR to save runner minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/devops-takehome
+  # Node version — single source of truth used by all jobs
+  NODE_VERSION: "20"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 · Lint
+  # Static code analysis with ESLint.
+  # Runs on every PR and every push to main.
+  # ─────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: "Static Analysis (ESLint)"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        # npm ci ensures reproducible installs from package-lock.json
+        run: npm ci
+
+      - name: Run ESLint
+        # --max-warnings 0 treats any warning as a build failure
+        run: npm run lint -- --max-warnings 0
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 · Test
+  # Jest unit tests with code coverage.
+  # Requires lint to pass first (fail-fast).
+  # ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: "Unit Tests (Jest)"
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage --ci --forceExit
+
+      - name: Upload coverage report
+        # Always upload so failures are also inspectable; retention kept short.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_number }}
+          path: app/coverage/
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3 · Build + Vulnerability Scan
+  # Builds the Docker image locally (no push) and runs Trivy against it.
+  # Fails the pipeline if any CRITICAL or HIGH CVEs are found.
+  # The SARIF report is uploaded as an artifact for review.
+  # ─────────────────────────────────────────────────────────────────────────────
+  scan:
+    name: "Container Scan (Trivy)"
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: read
+      security-events: write # Required to upload SARIF to GitHub code scanning
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning (local, not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          # Load into the local Docker daemon so Trivy can scan it
+          load: true
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:ci-scan
+          # Use GitHub Actions layer cache to speed up repeated builds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scan
+        id: trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:ci-scan
+          format: "sarif"
+          output: "trivy-results.sarif"
+          # Fail the build on CRITICAL or HIGH findings
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+          # Also scan OS packages and application dependencies
+          vuln-type: "os,library"
+          # Skip unfixed vulnerabilities — only report actionable findings
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF to GitHub Code Scanning
+        # Upload even if the scan step failed so the report is always available
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-container
+
+      - name: Upload Trivy SARIF as artifact (fallback / offline review)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif-${{ github.run_number }}
+          path: trivy-results.sarif
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4 · Docker Build & Push
+  # Builds a multi-platform production image and pushes to Docker Hub.
+  # Only runs on push/merge to main or on v* tag pushes — never on PRs.
+  #
+  # Tags applied:
+  #   latest        — always on main branch
+  #   sha-<short>   — always (e.g. sha-a1b2c3d)
+  #   v<semver>     — when a git tag like v1.2.3 is pushed
+  # ─────────────────────────────────────────────────────────────────────────────
+  push:
+    name: "Publish to Docker Hub"
+    runs-on: ubuntu-latest
+    needs: scan
+    # Only run on actual pushes/tags to main — not pull requests
+    if: github.event_name == 'push'
+
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        # Enables cross-compilation for non-native architectures (arm64 on amd64 runners)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract Docker metadata & compute tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # Always tag with the short commit SHA for traceability
+            type=sha,prefix=sha-,format=short
+            # Tag 'latest' on every push to the default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Full semver tag when a v* git tag is pushed (e.g. v1.2.3)
+            type=semver,pattern={{version}}
+            # Major.minor tag (e.g. 1.2) when a v* git tag is pushed
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=devops-takehome
+            org.opencontainers.image.description=TWIN Senior Platform Engineer Take-Home App
+            org.opencontainers.image.vendor=devops-takehome
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push multi-platform image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          # Build for both amd64 (servers) and arm64 (Apple Silicon / Graviton)
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Provenance and SBOM attestations for supply-chain security
+          provenance: true
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Print image digest
+        run: |
+          echo "✅ Image pushed successfully"
+          echo "   Digest : ${{ steps.build.outputs.digest }}"
+          echo "   Tags   : ${{ steps.meta.outputs.tags }}"
