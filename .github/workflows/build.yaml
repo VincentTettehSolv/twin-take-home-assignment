@@ -46,7 +46,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/devops-takehome
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/twin-app
   # Node version — single source of truth used by all jobs
   NODE_VERSION: "20"
 
@@ -201,6 +201,7 @@ jobs:
     name: "Publish to Docker Hub"
     runs-on: ubuntu-latest
     needs: scan
+    environment: dev
     # Only run on actual pushes/tags to main — not pull requests
     if: github.event_name == 'push'
 
