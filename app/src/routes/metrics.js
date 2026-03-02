@@ -46,7 +46,7 @@ const activeConnections = new client.Gauge({
 
 // ─── Middleware to track metrics ──────────────────────────────────────────────
 const metricsMiddleware = (req, res, next) => {
-  if (req.path === '/metrics') return next();
+  if (req.path === '/metrics') { return next(); }
 
   const start = process.hrtime.bigint();
   activeConnections.inc();

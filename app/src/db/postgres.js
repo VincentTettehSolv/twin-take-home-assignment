@@ -18,8 +18,8 @@ let pool = null;
  * Returns the singleton Pool, creating it on first call if DATABASE_URL is set.
  */
 function getPool() {
-    if (pool) return pool;
-    if (!process.env.DATABASE_URL) return null;
+    if (pool) { return pool; }
+    if (!process.env.DATABASE_URL) { return null; }
 
     pool = new Pool({
         connectionString: process.env.DATABASE_URL,
@@ -43,7 +43,7 @@ function getPool() {
  */
 async function query(text, params) {
     const p = getPool();
-    if (!p) throw new Error('Postgres not configured (DATABASE_URL not set)');
+    if (!p) { throw new Error('Postgres not configured (DATABASE_URL not set)'); }
     return p.query(text, params);
 }
 
@@ -53,7 +53,7 @@ async function query(text, params) {
  */
 async function healthCheck() {
     const p = getPool();
-    if (!p) return { status: 'disabled', message: 'DATABASE_URL not set' };
+    if (!p) { return { status: 'disabled', message: 'DATABASE_URL not set' }; }
 
     try {
         await p.query('SELECT 1');

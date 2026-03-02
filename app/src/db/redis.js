@@ -17,8 +17,8 @@ let client = null;
  * @returns {import('ioredis').Redis|null}
  */
 function getClient() {
-    if (client) return client;
-    if (!process.env.REDIS_URL) return null;
+    if (client) { return client; }
+    if (!process.env.REDIS_URL) { return null; }
 
     // Lazy require so the module loads even when ioredis is absent (tests).
     const Redis = require('ioredis');
@@ -47,7 +47,7 @@ function getClient() {
  */
 async function ping() {
     const c = getClient();
-    if (!c) return { status: 'disabled', message: 'REDIS_URL not set' };
+    if (!c) { return { status: 'disabled', message: 'REDIS_URL not set' }; }
 
     try {
         const result = await c.ping();

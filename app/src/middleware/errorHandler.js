@@ -7,7 +7,7 @@ const logger = require('../logger');
  * Logs the error with structured context and returns a sanitized JSON response.
  * In production, stack traces are never leaked to the client.
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   const status = err.status || err.statusCode || 500;
   const isProduction = process.env.APP_ENV === 'production';
 
