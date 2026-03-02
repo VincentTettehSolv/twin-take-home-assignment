@@ -21,8 +21,8 @@ variable "kube_context" {
 
 variable "image_name" {
   type        = string
-  description = "Full Docker Hub image reference (e.g. vincentchrisbone/devops-takehome:latest)."
-  default     = "vincentchrisbone/devops-takehome:latest"
+  description = "Full Docker Hub image reference (e.g. vincentchrisbone/twin-app:latest)."
+  default     = "vincentchrisbone/twin-app:latest"
 }
 
 variable "image_pull_policy" {

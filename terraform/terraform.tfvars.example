@@ -5,7 +5,7 @@
 # IMPORTANT: Do not commit secrets or sensitive values to this file.
 # ──────────────────────────────────────────────────────────────────────────────
 
-image_name        = "vincentchrisbone/devops-takehome:latest"
+image_name        = "vincentchrisbone/twin-app:latest"
 image_pull_policy = "Always"
 
 app_name    = "devops-takehome"

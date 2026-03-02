@@ -8,7 +8,7 @@ SHELL := /bin/bash
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 DOCKER_USERNAME  ?= vincentchrisbone
-IMAGE_NAME       := $(DOCKER_USERNAME)/devops-takehome
+IMAGE_NAME       := $(DOCKER_USERNAME)/twin-app
 IMAGE_TAG        ?= latest
 FULL_IMAGE       := $(IMAGE_NAME):$(IMAGE_TAG)
 NAMESPACE        := devops-takehome
@@ -160,7 +160,7 @@ health: ## Check all health endpoints
 # ─── Utilities ────────────────────────────────────────────────────────────────
 .PHONY: minikube-start
 minikube-start: ## Start minikube if not running
-	@minikube status || minikube start --driver=docker --cpus=2 --memory=4096
+	@minikube status || minikube start --driver=docker --cpus=2 --memory=4096 --addons=ingress
 
 .PHONY: clean
 clean: ## Remove local node_modules and coverage
