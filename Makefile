@@ -7,14 +7,15 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 # ─── Configuration ────────────────────────────────────────────────────────────
-DOCKER_USERNAME  ?= vincentchrisbone
+DOCKER_USERNAME  ?= vincentchrisbone99
 IMAGE_NAME       := $(DOCKER_USERNAME)/twin-app
 IMAGE_TAG        ?= latest
 FULL_IMAGE       := $(IMAGE_NAME):$(IMAGE_TAG)
-NAMESPACE        := devops-takehome
-APP              := devops-takehome
+NAMESPACE        := twin-app-ns
+APP              := twin-app
 TF_DIR           := terraform
 APP_DIR          := app
+MINIKUBE_PROFILE ?= minikube
 
 # Colors
 GREEN  := \033[0;32m
@@ -111,7 +112,7 @@ destroy: ## Destroy all Kubernetes resources (terraform destroy)
 # ─── Kubernetes Operations ────────────────────────────────────────────────────
 .PHONY: open
 open: ## Open the app in the browser via minikube
-	minikube service $(APP) -n $(NAMESPACE)
+	minikube service $(APP) -n $(NAMESPACE) -p $(MINIKUBE_PROFILE)
 
 .PHONY: status
 status: ## Show all Kubernetes resources in the namespace
@@ -160,7 +161,8 @@ health: ## Check all health endpoints
 # ─── Utilities ────────────────────────────────────────────────────────────────
 .PHONY: minikube-start
 minikube-start: ## Start minikube if not running
-	@minikube status || minikube start --driver=docker --cpus=2 --memory=4096 --addons=ingress
+	@minikube status -p $(MINIKUBE_PROFILE) 2>/dev/null | grep -q 'Running' \
+	  || minikube start -p $(MINIKUBE_PROFILE) --driver=docker --cpus=2 --memory=4096 --addons=ingress
 
 .PHONY: clean
 clean: ## Remove local node_modules and coverage

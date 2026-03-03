@@ -21,8 +21,8 @@ variable "kube_context" {
 
 variable "image_name" {
   type        = string
-  description = "Full Docker Hub image reference (e.g. vincentchrisbone/twin-app:latest)."
-  default     = "vincentchrisbone/twin-app:latest"
+  description = "Full Docker Hub image reference (e.g. vincentchrisbone99/twin-app:latest)."
+  default     = "vincentchrisbone99/twin-app:latest"
 }
 
 variable "image_pull_policy" {
@@ -34,6 +34,19 @@ variable "image_pull_policy" {
     condition     = contains(["Always", "IfNotPresent", "Never"], var.image_pull_policy)
     error_message = "image_pull_policy must be Always, IfNotPresent, or Never."
   }
+}
+
+variable "docker_hub_username" {
+  type        = string
+  description = "Docker Hub username used for the imagePullSecret."
+  default     = "vincentchrisbone99"
+}
+
+variable "docker_hub_token" {
+  type        = string
+  description = "Docker Hub access token for pulling private images. Generate at hub.docker.com → Account Settings → Security."
+  default     = ""
+  sensitive   = true
 }
 
 variable "app_name" {

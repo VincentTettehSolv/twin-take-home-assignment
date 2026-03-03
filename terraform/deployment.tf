@@ -72,6 +72,16 @@ resource "kubernetes_deployment" "app" {
         # Gives the app time to finish in-flight requests during shutdown.
         termination_grace_period_seconds = 30
 
+        # ── Image Pull Secrets ───────────────────────────────────────────
+        # Populated only when docker_hub_token is set (private repos).
+        # The count-based secret resource produces 0 or 1 items.
+        dynamic "image_pull_secrets" {
+          for_each = length(kubernetes_secret.docker_registry) > 0 ? [1] : []
+          content {
+            name = kubernetes_secret.docker_registry[0].metadata[0].name
+          }
+        }
+
         container {
           name              = var.app_name
           image             = var.image_name

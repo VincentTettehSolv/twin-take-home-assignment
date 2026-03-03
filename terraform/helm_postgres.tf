@@ -7,10 +7,12 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 resource "helm_release" "postgres" {
-  name       = "postgres"
-  repository = "https://charts.bitnami.com/bitnami"
+  name = "postgres"
+  # Bitnami PostgreSQL 16+ is published as an OCI artifact only.
+  # The legacy HTTP repo (charts.bitnami.com) only carries older versions.
+  repository = "oci://registry-1.docker.io/bitnamicharts"
   chart      = "postgresql"
-  version    = "~13.0"
+  version    = "18.5.1"
   namespace  = kubernetes_namespace.app.metadata[0].name
 
   wait            = true

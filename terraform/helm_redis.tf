@@ -7,10 +7,12 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 resource "helm_release" "redis" {
-  name       = "redis"
-  repository = "https://charts.bitnami.com/bitnami"
+  name = "redis"
+  # Bitnami Redis 20+ is published as an OCI artifact only.
+  # The legacy HTTP repo (charts.bitnami.com) only carries older versions.
+  repository = "oci://registry-1.docker.io/bitnamicharts"
   chart      = "redis"
-  version    = "~18.0"
+  version    = "25.3.2"
   namespace  = kubernetes_namespace.app.metadata[0].name
 
   # Wait until all pods are ready before Terraform marks as complete.
