@@ -27,7 +27,7 @@ RESET  := \033[0m
 .PHONY: help
 help: ## Show this help message
 	@echo ""
-	@echo "  $(CYAN)devops-takehome — Available Commands$(RESET)"
+	@echo "  $(CYAN)twin-devops-takehome — Available Commands$(RESET)"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf ""} /^[a-zA-Z_-]+:.*?##/ { printf "  $(GREEN)%-20s$(RESET) %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@echo ""
