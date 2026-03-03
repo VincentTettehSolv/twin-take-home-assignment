@@ -38,14 +38,14 @@ open http://localhost:8080
 vincentchrisbone/devops-takehome:latest
 ```
 
-> **Docker Hub image:** `vincentchrisbone/devops-takehome:latest`
+> **Docker Hub image:** `vincentchrisbone99/devops-takehome:latest`
 
 Build and push:
 
 ```bash
 cd app
-docker build -t vincentchrisbone/devops-takehome:latest .
-docker push vincentchrisbone/devops-takehome:latest
+docker build -t vincentchrisbone99/devops-takehome:latest .
+docker push vincentchrisbone99/devops-takehome:latest
 ```
 
 ---
