@@ -16,6 +16,7 @@ APP              := twin-app
 TF_DIR           := terraform
 APP_DIR          := app
 MINIKUBE_PROFILE ?= minikube
+INGRESS_HOST     ?= twin-app.local
 
 # Colors
 GREEN  := \033[0;32m
@@ -95,23 +96,27 @@ tf-plan: tf-init ## Show Terraform execution plan
 	cd $(TF_DIR) && terraform plan
 
 .PHONY: deploy
-deploy: tf-init ## Deploy to minikube (terraform apply)
+deploy: tf-init ingress-enable ## Enable ingress addon, terraform apply, patch /etc/hosts, open app
 	@echo "$(CYAN)Deploying to minikube...$(RESET)"
 	cd $(TF_DIR) && terraform apply -auto-approve
 	@echo "$(GREEN)✓ Deployment complete$(RESET)"
 	@echo ""
-	@$(MAKE) open
+	@$(MAKE) hosts-add
+	@echo ""
+	@echo "$(GREEN)✓ App available at http://$(INGRESS_HOST)$(RESET)"
+	@$(MAKE) open-ingress
 
 .PHONY: destroy
-destroy: ## Destroy all Kubernetes resources (terraform destroy)
+destroy: ## Destroy all Kubernetes resources and remove /etc/hosts entry
 	@echo "$(YELLOW)WARNING: This will destroy all deployed resources$(RESET)"
 	@read -p "Are you sure? [y/N] " confirm && [ $${confirm} = y ]
+	@$(MAKE) hosts-remove
 	cd $(TF_DIR) && terraform destroy -auto-approve
 	@echo "$(GREEN)✓ All resources destroyed$(RESET)"
 
 # ─── Kubernetes Operations ────────────────────────────────────────────────────
 .PHONY: open
-open: ## Open the app in the browser via minikube
+open: ## Open the app in the browser via minikube service (NodePort)
 	minikube service $(APP) -n $(NAMESPACE) -p $(MINIKUBE_PROFILE)
 
 .PHONY: status
@@ -125,6 +130,9 @@ status: ## Show all Kubernetes resources in the namespace
 	@echo ""
 	@echo "$(CYAN)Deployments:$(RESET)"
 	@kubectl get deployments -n $(NAMESPACE)
+	@echo ""
+	@echo "$(CYAN)Ingress:$(RESET)"
+	@kubectl get ingress -n $(NAMESPACE) 2>/dev/null || echo "  No ingress resources found."
 	@echo ""
 
 .PHONY: logs
@@ -157,6 +165,61 @@ health: ## Check all health endpoints
 	 echo "/health:       $$(curl -sf $$BASE/health)"; \
 	 echo "/health/ready: $$(curl -sf $$BASE/health/ready | head -c 100)"; \
 	 echo "/api/info:     $$(curl -sf $$BASE/api/info | head -c 100)"
+
+# ─── Ingress ──────────────────────────────────────────────────────────────────
+.PHONY: ingress-enable
+ingress-enable: ## Enable the NGINX ingress addon on minikube and wait for it to be ready
+	@echo "$(CYAN)Enabling minikube ingress addon...$(RESET)"
+	@minikube addons enable ingress -p $(MINIKUBE_PROFILE)
+	@echo "$(CYAN)Waiting for ingress-nginx controller to be ready...$(RESET)"
+	@kubectl wait --namespace ingress-nginx \
+	  --for=condition=ready pod \
+	  --selector=app.kubernetes.io/component=controller \
+	  --timeout=120s
+	@echo "$(GREEN)✓ Ingress controller ready$(RESET)"
+
+.PHONY: ingress-disable
+ingress-disable: ## Disable the NGINX ingress addon on minikube
+	@echo "$(YELLOW)Disabling minikube ingress addon...$(RESET)"
+	@minikube addons disable ingress -p $(MINIKUBE_PROFILE)
+	@echo "$(GREEN)✓ Ingress addon disabled$(RESET)"
+
+.PHONY: hosts-add
+hosts-add: ## Add twin-app.local → 127.0.0.1 in /etc/hosts (port-forward/tunnel bind to localhost)
+	@if grep -q '$(INGRESS_HOST)' /etc/hosts; then \
+	  echo "$(YELLOW)↳ /etc/hosts already contains $(INGRESS_HOST) — skipping$(RESET)"; \
+	else \
+	  echo "$(CYAN)Adding 127.0.0.1  $(INGRESS_HOST) to /etc/hosts (sudo required)...$(RESET)"; \
+	  echo "127.0.0.1  $(INGRESS_HOST)" | sudo tee -a /etc/hosts > /dev/null; \
+	  echo "$(GREEN)✓ Added: 127.0.0.1  $(INGRESS_HOST)$(RESET)"; \
+	fi
+
+.PHONY: hosts-remove
+hosts-remove: ## Remove twin-app.local from /etc/hosts (requires sudo)
+	@if grep -q '$(INGRESS_HOST)' /etc/hosts; then \
+	  echo "$(CYAN)Removing $(INGRESS_HOST) from /etc/hosts (sudo required)...$(RESET)"; \
+	  sudo sed -i '' '/$(INGRESS_HOST)/d' /etc/hosts; \
+	  echo "$(GREEN)✓ Removed $(INGRESS_HOST) from /etc/hosts$(RESET)"; \
+	else \
+	  echo "$(YELLOW)↳ $(INGRESS_HOST) not found in /etc/hosts — nothing to remove$(RESET)"; \
+	fi
+
+.PHONY: open-ingress
+open-ingress: ## Open the app via the ingress URL in the default browser
+	@echo "$(CYAN)Opening http://$(INGRESS_HOST) ...$(RESET)"
+	@open http://$(INGRESS_HOST) 2>/dev/null || xdg-open http://$(INGRESS_HOST)
+
+.PHONY: tunnel
+tunnel: ## Run minikube tunnel (macOS/Docker driver) — routes minikube network to host; keep running in a separate terminal
+	@echo "$(CYAN)Starting minikube tunnel (sudo required, keep this terminal open)...$(RESET)"
+	@echo "$(YELLOW)Access the app at http://$(INGRESS_HOST) once the tunnel is established$(RESET)"
+	sudo minikube tunnel -p $(MINIKUBE_PROFILE)
+
+.PHONY: ingress-forward
+ingress-forward: ## Alternative to tunnel: port-forward ingress-nginx controller to localhost:80 (requires sudo)
+	@echo "$(CYAN)Forwarding ingress-nginx → localhost:80 (sudo required, keep this terminal open)...$(RESET)"
+	@echo "$(YELLOW)Access the app at http://$(INGRESS_HOST) while this is running$(RESET)"
+	sudo kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 80:80
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
 .PHONY: minikube-start

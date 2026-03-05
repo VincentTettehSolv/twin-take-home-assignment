@@ -18,6 +18,7 @@ const postgres = require('./db/postgres');
 const app = express();
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
+const isProd = process.env.APP_ENV === 'production';
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -26,8 +27,18 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:'],
+        // Do NOT include upgrade-insecure-requests in non-prod:
+        // it causes browsers to silently rewrite http fetch() calls to https,
+        // breaking all API calls when there is no TLS termination (local/ingress dev).
+        upgradeInsecureRequests: isProd ? [] : null,
       },
     },
+    // Disable HSTS in non-prod — HSTS pins https in the browser and causes the
+    // same silent-upgrade problem for subsequent visits even after the header is
+    // removed. Only enable it when the app is behind real TLS in production.
+    hsts: isProd
+      ? { maxAge: 15552000, includeSubDomains: true }
+      : false,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   })
 );

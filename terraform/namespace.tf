@@ -1,7 +1,4 @@
-# ─── namespace.tf ─────────────────────────────────────────────────────────────
-# Creates a dedicated namespace with labels for all app resources.
-# Isolates the application from the default namespace.
-# ──────────────────────────────────────────────────────────────────────────────
+
 
 resource "kubernetes_namespace" "app" {
   metadata {

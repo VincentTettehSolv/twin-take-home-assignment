@@ -1,28 +1,4 @@
-# ─── .github/workflows/build.yaml ─────────────────────────────────────────────
-# Production CI/CD Pipeline
-#
-# Responsibilities:
-#   1. Lint      — ESLint static code analysis on every push/PR
-#   2. Test      — Jest unit tests with coverage reporting
-#   3. Scan      — Build Docker image locally, run Trivy vulnerability scan
-#                  (fails on CRITICAL or HIGH CVEs — image is never pushed if vulnerable)
-#   4. Push      — Re-build & push multi-platform image to Docker Hub
-#                  (only on push/merge to main, never on PRs)
-#
-# Triggers:
-#   - Pull requests targeting main  → jobs 1 & 2 & 3 (lint + test + scan, no push)
-#   - Pushes / merges to main       → full pipeline including Docker push
-#
-# Versioning / Tagging strategy:
-#   - sha-<short>   always applied (e.g. sha-a1b2c3d)
-#   - latest        always applied on main branch pushes
-#   - v<semver>     applied when a git tag like v1.2.3 is pushed
-#     → to release: git tag v1.0.0 && git push origin v1.0.0
-#
-# Required Repository Secrets:
-#   DOCKER_USERNAME  — Docker Hub username
-#   DOCKER_PASSWORD  — Docker Hub access token (Settings → Security → Access Tokens)
-# ──────────────────────────────────────────────────────────────────────────────
+
 
 name: Build, Test, Scan & Publish
 

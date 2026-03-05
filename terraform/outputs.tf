@@ -1,7 +1,4 @@
-# ─── outputs.tf ───────────────────────────────────────────────────────────────
-# Outputs provide quick access to key deployment details.
-# Run: terraform output   (after apply)
-# ──────────────────────────────────────────────────────────────────────────────
+
 
 output "namespace" {
   description = "Kubernetes namespace where the app is deployed."
@@ -31,6 +28,16 @@ output "node_port" {
 output "minikube_access_command" {
   description = "Run this command to open the app in your browser via minikube."
   value       = "minikube service ${kubernetes_service.app.metadata[0].name} -n ${kubernetes_namespace.app.metadata[0].name}"
+}
+
+output "ingress_url" {
+  description = "Ingress URL for the app (requires /etc/hosts entry and ingress addon enabled)."
+  value       = var.enable_ingress ? "http://${var.ingress_host}" : "Ingress disabled"
+}
+
+output "ingress_hosts_entry" {
+  description = "Copy-paste this line into /etc/hosts to enable local ingress access (fill in minikube ip)."
+  value       = var.enable_ingress ? "$(minikube ip)  ${var.ingress_host}" : "Ingress disabled"
 }
 
 output "kubectl_port_forward" {

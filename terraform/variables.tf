@@ -128,6 +128,18 @@ variable "node_port" {
   default     = 30080
 }
 
+variable "enable_ingress" {
+  type        = bool
+  description = "Whether to create the Kubernetes Ingress resource. Requires the minikube ingress addon."
+  default     = true
+}
+
+variable "ingress_host" {
+  type        = string
+  description = "Hostname used in the Ingress rule. Add this to /etc/hosts pointing at minikube ip."
+  default     = "twin-app.local"
+}
+
 # ─── Observability ────────────────────────────────────────────────────────────
 
 variable "log_level" {
