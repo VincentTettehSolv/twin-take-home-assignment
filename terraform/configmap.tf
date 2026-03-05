@@ -1,7 +1,3 @@
-# ─── configmap.tf ─────────────────────────────────────────────────────────────
-# ConfigMap holds non-sensitive runtime configuration.
-# Environment-specific values are injected from Terraform variables.
-# ──────────────────────────────────────────────────────────────────────────────
 
 resource "kubernetes_config_map" "app" {
   metadata {

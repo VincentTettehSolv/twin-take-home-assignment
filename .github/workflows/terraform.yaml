@@ -1,18 +1,3 @@
-# ─── .github/workflows/terraform.yaml ────────────────────────────────────────
-# Terraform Pipeline
-#
-# Responsibilities:
-#   1. Check Terraform formatting (fmt)
-#   2. Validate Terraform configuration (validate)
-#   3. (Optional) Run terraform plan for review on PRs
-#
-# Triggers:
-#   - Pull requests or pushes that modify the terraform/ directory
-#
-# NOTE: This pipeline validates configuration only. Actual cluster deployment
-# is performed manually: cd terraform && terraform apply.
-# For production, extend this with a deploy step gated on approvals.
-# ──────────────────────────────────────────────────────────────────────────────
 
 name: Terraform Validate
 
