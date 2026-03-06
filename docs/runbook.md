@@ -186,15 +186,15 @@ kubectl top pods -n $NS
 
 ```bash
 cd app
-docker build -t vincentchrisbone/devops-takehome:v1.1.0 .
-docker push vincentchrisbone/devops-takehome:v1.1.0
+docker build -t vincentchrisbone99/devops-takehome:v1.1.0 .
+docker push vincentchrisbone99/devops-takehome:v1.1.0
 ```
 
 ### 2. Update Terraform and apply
 
 ```bash
 cd ../terraform
-terraform apply -var="image_name=vincentchrisbone/devops-takehome:v1.1.0"
+terraform apply -var="image_name=vincentchrisbone99/devops-takehome:v1.1.0"
 ```
 
 ### 3. Monitor rollout

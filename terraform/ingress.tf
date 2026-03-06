@@ -20,13 +20,6 @@ resource "kubernetes_ingress_v1" "app" {
       "nginx.ingress.kubernetes.io/rewrite-target" = "/"
       # Disables SSL redirect so plain http works locally
       "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
-      # Strip the upgrade-insecure-requests CSP directive that Helmet adds.
-      # Without this Chrome silently upgrades fetch('/health') → https://twin-app.local/health
-      # which has no TLS listener and causes all dashboard endpoints to show "offline".
-      "nginx.ingress.kubernetes.io/configuration-snippet" = <<-EOT
-        more_clear_headers "Strict-Transport-Security";
-        more_set_headers "Content-Security-Policy: default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data:;base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';object-src 'none'";
-      EOT
     }
   }
 
